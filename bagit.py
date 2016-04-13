@@ -903,7 +903,6 @@ def _make_parser():
                       help='parallelize checksums generation and verification')
     parser.add_argument('--log', help='The name of the log file')
     parser.add_argument('--quiet', action='store_true')
-    parser.add_argument('--validate', action='store_true')
     parser.add_argument('--fast', action='store_true')
 
     # optionally specify which checksum algorithm(s) to use when creating a bag
@@ -921,7 +920,9 @@ def _make_parser():
         parser.add_argument('--%s' % header.lower(), type=str,
                           action=BagHeaderAction)
 
-    parser.add_argument('directory', nargs='+', help='directory to make a bag from')
+    parser.add_argument('command', choices=['create', 'validate', 'update'],
+        help='create a new bag, validate an existing bag, or update the manifests on an existing bag')
+    parser.add_argument('directory', nargs='+', help='directory to run command on')
 
     return parser
 
@@ -951,7 +952,7 @@ def main():
     for bag_dir in args.directory:
 
         # validate the bag
-        if args.validate:
+        if args.command == 'validate':
             try:
                 bag = Bag(bag_dir)
                 # validate throws a BagError or BagValidationError
@@ -965,7 +966,7 @@ def main():
                 rc = 1
 
         # make the bag
-        else:
+        elif args.command == 'create':
             try:
                 make_bag(bag_dir, bag_info=parser.bag_info,
                          processes=args.processes,
@@ -973,6 +974,12 @@ def main():
             except Exception as exc:
                 LOGGER.error("Failed to create bag in %s: %s", bag_dir, exc, exc_info=True)
                 rc = 1
+
+        # update manifests
+        elif args.command == 'update':
+            bag = Bag(bag_dir)
+            # TODO update bag-info
+            bag.save(manifests=True)
 
         sys.exit(rc)
 
